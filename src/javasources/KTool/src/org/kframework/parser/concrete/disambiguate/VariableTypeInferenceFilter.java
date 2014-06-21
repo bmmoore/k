@@ -64,7 +64,7 @@ public class VariableTypeInferenceFilter extends ParseForestTransformer {
         // after finding all of the variable declarations traverse the tree to disambiguate
         r = (Sentence) new VariableTypeFilter(varDeclMap, false, context).visitNode(r);
         r = (Sentence) new TypeSystemFilter(context).visitNode(r);
-        r = (Sentence) new TypeInferenceSupremumFilter(context).visitNode(r);
+        //r = (Sentence) new TypeInferenceSupremumFilter(context).visitNode(r);
 
         boolean varTypeInference = true;
         if (varTypeInference) {

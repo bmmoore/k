@@ -2,6 +2,7 @@
 package org.kframework.parser.concrete.disambiguate;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -41,5 +42,35 @@ public class VarHashMap extends HashMap<String, Set<String>> {
         } else
             return false;
         return true;
+    }
+
+    /**
+     * For the given key, adds the value into a set. If the key doesn't exist, it creates the set.
+     * @param key
+     * @param value
+     */
+    public void add(String key, String value) {
+        if (this.containsKey(key))
+            this.get(key).add(value);
+        else {
+            java.util.Set<String> varss = new HashSet<>();
+            varss.add(value);
+            this.put(key, varss);
+        }
+    }
+
+    /**
+     * For the given key, adds all the values to a set. If the key doesn't exist, it creates the set.
+     * @param key
+     * @param value
+     */
+    public void addAll(String key, Set<String> value) {
+        if (this.containsKey(key))
+            this.get(key).addAll(value);
+        else {
+            java.util.Set<String> varss = new HashSet<>();
+            varss.addAll(value);
+            this.put(key, varss);
+        }
     }
 }

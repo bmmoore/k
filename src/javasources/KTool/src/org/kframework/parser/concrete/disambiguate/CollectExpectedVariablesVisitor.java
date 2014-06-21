@@ -6,6 +6,7 @@ import java.util.*;
 import org.kframework.compile.utils.MetaK;
 import org.kframework.kil.Ambiguity;
 import org.kframework.kil.Term;
+import org.kframework.kil.TermCons;
 import org.kframework.kil.Variable;
 import org.kframework.kil.loader.Context;
 import org.kframework.kil.visitors.BasicVisitor;
@@ -19,14 +20,17 @@ public class CollectExpectedVariablesVisitor extends BasicVisitor {
      * Each element in the list is a Mapping from variable name and a list of constraints for that variable.
      * On each Ambiguity node, a cartesian product is created between the current List and each ambiguity variant.
      */
-    public Set<VarHashMap> vars = new HashSet<VarHashMap>();
+    public Set<VarHashMap> vars = new HashSet<>();
 
     @Override
     public Void visit(Ambiguity node, Void _) {
-        Set<VarHashMap> newVars = new HashSet<VarHashMap>();
-        for (Term t : node.getContents()) {
-            CollectExpectedVariablesVisitor viz = new CollectExpectedVariablesVisitor(context);
-            viz.visitNode(t);
+        Set<VarHashMap> newVars = new HashSet<>();
+        LookAlikeMap visitors = new LookAlikeMap(context);
+        // first visit all the children and collect the visitors
+        // the visitors will be shared for similar productions
+        for (Term t : node.getContents())
+            visitors.get(t).visitNode(t);
+        for (CollectExpectedVariablesVisitor viz : visitors.values()) {
             // create the split
             for (VarHashMap elem : vars) { // for every local type restrictions
                 for (VarHashMap elem2 : viz.vars) { // create a combination with every ambiguity detected
@@ -35,6 +39,7 @@ public class CollectExpectedVariablesVisitor extends BasicVisitor {
             }
             if (vars.size() == 0)
                 newVars.addAll(viz.vars);
+
         }
         if (!newVars.isEmpty())
             vars = newVars;
@@ -47,33 +52,57 @@ public class CollectExpectedVariablesVisitor extends BasicVisitor {
             if (vars.isEmpty())
                 vars.add(new VarHashMap());
             for (VarHashMap vars2 : vars)
-                if (vars2.containsKey(var.getName())) {
-                    vars2.get(var.getName()).add(var.getExpectedSort());
-                } else {
-                    java.util.Set<String> varss = new HashSet<String>();
-                    varss.add(var.getExpectedSort());
-                    vars2.put(var.getName(), varss);
-                }
+                vars2.add(var.getName(), var.getExpectedSort());
         }
         return null;
     }
 
-    private VarHashMap duplicate(VarHashMap in) {
+    private static VarHashMap duplicate(VarHashMap in) {
         VarHashMap newM = new VarHashMap();
         for (Map.Entry<String, Set<String>> elem : in.entrySet()) {
-            newM.put(elem.getKey(), new HashSet<String>(elem.getValue()));
+            newM.put(elem.getKey(), new HashSet<>(elem.getValue()));
         }
         return newM;
     }
 
-    private VarHashMap combine(VarHashMap in1, VarHashMap in2) {
+    private static VarHashMap combine(VarHashMap in1, VarHashMap in2) {
         VarHashMap newM = duplicate(in1);
         for (Map.Entry<String, Set<String>> elem : in2.entrySet()) {
-            if (newM.containsKey(elem.getKey()))
-                newM.get(elem.getKey()).addAll(elem.getValue());
-            else
-                newM.put(elem.getKey(), new HashSet<String>(elem.getValue()));
+            newM.addAll(elem.getKey(), elem.getValue());
         }
         return newM;
+    }
+
+    /**
+     * A mapping from a term that has a specific pattern, to the variable collect visitor.
+     * The pattern can be:
+     *   - a Variable
+     *   - a TermCons which looks alike with another TermCons
+     *       the two terms can be alike if all children have the same location information
+     *       and if the productions are subsorted or equal one to another.
+     *       This is useful because overloaded operators need special handling.
+     */
+    private class LookAlikeMap extends HashMap<Term, CollectExpectedVariablesVisitor> {
+        private final Context context;
+        public LookAlikeMap(Context context) {
+            this.context = context;
+        }
+
+        public CollectExpectedVariablesVisitor get(Term t) {
+            for (Term trm : this.keySet()) {
+                if (trm instanceof Variable && t instanceof Variable)
+                    return this.get(trm);
+                if (trm instanceof TermCons && t instanceof TermCons)
+                    if (context.isSubsortedEq((TermCons) trm, (TermCons) t) ||
+                        context.isSubsortedEq((TermCons) t, (TermCons) trm)) {
+                        System.out.println("Found the same viz for: " + ((TermCons) t).getProduction());
+                        return get(trm);
+                    }
+            }
+            // couldn't find anything that looks alike, create a new instance of the visitor
+            CollectExpectedVariablesVisitor viz = new CollectExpectedVariablesVisitor(context);
+            this.put(t, viz);
+            return viz;
+        }
     }
 }
