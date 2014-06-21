@@ -91,11 +91,12 @@ public class CollectExpectedVariablesVisitor extends BasicVisitor {
         public CollectExpectedVariablesVisitor get(Term t) {
             for (Term trm : this.keySet()) {
                 if (trm instanceof Variable && t instanceof Variable)
-                    return this.get(trm);
+                    return super.get(trm);
                 if (trm instanceof TermCons && t instanceof TermCons)
                     if (context.isSubsortedEq((TermCons) trm, (TermCons) t) ||
                         context.isSubsortedEq((TermCons) t, (TermCons) trm)) {
-                        return get(trm);
+                        //System.out.println("Found dito: " + ((TermCons) trm).getProduction());
+                        return super.get(trm);
                     }
             }
             // couldn't find anything that looks alike, create a new instance of the visitor
