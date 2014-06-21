@@ -95,7 +95,6 @@ public class CollectExpectedVariablesVisitor extends BasicVisitor {
                 if (trm instanceof TermCons && t instanceof TermCons)
                     if (context.isSubsortedEq((TermCons) trm, (TermCons) t) ||
                         context.isSubsortedEq((TermCons) t, (TermCons) trm)) {
-                        System.out.println("Found the same viz for: " + ((TermCons) t).getProduction());
                         return get(trm);
                     }
             }
