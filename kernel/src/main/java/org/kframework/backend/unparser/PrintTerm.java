@@ -18,6 +18,7 @@ public class PrintTerm implements Transformation<ASTNode, String> {
     private final ColorOptions colorOptions;
     private final OutputModes mode;
     private final Context context;
+    private boolean first = true;
 
     @Inject
     public PrintTerm(
@@ -31,7 +32,8 @@ public class PrintTerm implements Transformation<ASTNode, String> {
 
     @Override
     public String run(ASTNode node, Attributes a) {
-        if (mode == OutputModes.KAST) {
+        if (mode == OutputModes.KAST && first) {
+            first = false;
             return ToKast.apply((K) new KILtoInnerKORE(context, false).apply(node));
         } else {
             return new Unparser(a.typeSafeGet(Context.class),
